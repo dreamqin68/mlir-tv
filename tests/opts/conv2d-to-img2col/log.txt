@@ -1,0 +1,53 @@
+=========== Function conv_16433136 ===========
+
+<src>
+  %0 = linalg.conv_2d_nhwc_hwcf {dilations = dense<1> : tensor<2xi64>, strides = dense<1> : tensor<2xi64>} ins(%arg0, %arg1 : tensor<1x16x16x4xf32>, tensor<3x3x4x16xf32>) outs(%arg2 : tensor<1x14x14x16xf32>) -> tensor<1x14x14x16xf32>
+  func.return %0 : tensor<1x14x14x16xf32>
+
+<tgt>
+  %0 = tensor.empty() : tensor<1x14x14x3x3x4xf32>
+  %1 = linalg.generic {indexing_maps = [affine_map<(d0, d1, d2, d3, d4, d5) -> (d0, d1 + d3, d2 + d4, d5)>, affine_map<(d0, d1, d2, d3, d4, d5) -> (d0, d1, d2, d3, d4, d5)>], iterator_types = ["parallel", "parallel", "parallel", "parallel", "parallel", "parallel"]} ins(%arg0 : tensor<1x16x16x4xf32>) outs(%0 : tensor<1x14x14x3x3x4xf32>) {
+^bb0(%in: f32, %out: f32):
+  linalg.yield %in : f32
+} -> tensor<1x14x14x3x3x4xf32>
+  %collapsed = tensor.collapse_shape %1 [[0, 1, 2], [3, 4, 5]] : tensor<1x14x14x3x3x4xf32> into tensor<196x36xf32>
+  %collapsed_0 = tensor.collapse_shape %arg1 [[0, 1, 2], [3]] : tensor<3x3x4x16xf32> into tensor<36x16xf32>
+  %collapsed_1 = tensor.collapse_shape %arg2 [[0, 1, 2], [3]] : tensor<1x14x14x16xf32> into tensor<196x16xf32>
+  %2 = linalg.matmul ins(%collapsed, %collapsed_0 : tensor<196x36xf32>, tensor<36x16xf32>) outs(%collapsed_1 : tensor<196x16xf32>) -> tensor<196x16xf32>
+  %expanded = tensor.expand_shape %2 [[0, 1, 2], [3]] output_shape [1, 14, 14, 16] : tensor<196x16xf32> into tensor<1x14x14x16xf32>
+  func.return %expanded : tensor<1x14x14x16xf32>
+
+== Result: timeout ==
+
+--------------------------------------------------------------
+  Abstractions used for the validation:
+  - dot ops (fp): FULLY_ABS
+  - cast ops (fp): FULLY_ABS
+  - add/sum ops (fp): DEFAULT
+  - dot ops (int): FULLY_ABS
+--------------------------------------------------------------
+
+Validating the transformation with a refined abstraction...
+== Result: timeout ==
+
+--------------------------------------------------------------
+  Abstractions used for the validation:
+  - dot ops (fp): SUM_MUL
+  - cast ops (fp): FULLY_ABS
+  - add/sum ops (fp): DEFAULT
+  - dot ops (int): FULLY_ABS
+--------------------------------------------------------------
+
+Validating the transformation with a refined abstraction...
+== Result: timeout ==
+
+--------------------------------------------------------------
+  Abstractions used for the validation:
+  - dot ops (fp): SUM_MUL
+  - cast ops (fp): FULLY_ABS
+  - add/sum ops (fp): UNROLL_TO_ADD
+  - dot ops (int): FULLY_ABS
+--------------------------------------------------------------
+
+solver's running time: 91 msec.
+
